@@ -7,7 +7,7 @@
 
 import Foundation
 
-final enum LaunchArguments: String{
+enum LaunchArguments: String{
     case uiTest = "--uitest"
     case noInternet = "--no-internet"
     case cachedNews = "--cachedNews"

@@ -7,15 +7,24 @@
 
 import XCTest
 @testable import News
+import Combine
 
 class NewsTests: XCTestCase {
     
-    override func setUpWithError() throws {
+    var cancellables = Set<AnyCancellable>()
+    
+    override func setUp() async throws {
         executionTimeAllowance = 1.0
+        
+        MockServiceManager.shared.setServiceAvailable()
     }
 
     override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
+        cancellables
+            .forEach {
+                $0.cancel()
+            }
+        cancellables.removeAll()
     }
 
 }

@@ -9,103 +9,143 @@ import XCTest
 @testable import News
 
 class NewsFeedTests: NewsTests{
+    /// Scenario - Warning message when no internet.
+    func test_warning_message_when_no_internet() {
+        let exp = XCTestExpectation(description: "\(#function)")
+        
+        // Given the device has no internent connectivity
+        MockServiceManager.shared.setServiceNotAvailable()
+        
+        // Then the user should see warning message
+        let newsVM = NewsFeedViewModel(service: MockNewsFeedService())
+        
+        Task.detached {
+            await newsVM.fetchNews()
+            let errorMessage = newsVM.errorMessage
+            XCTAssertTrue(errorMessage == NewsAppError.noInternet.localizedDescription, "Error message did not match.")
+            
+            exp.fulfill()
+        }
+        
+        wait(for: [exp], timeout: executionTimeAllowance)
+    }
+    
+    /// Scenario - No warning message when the device has internet and showing live news feed
+    func test_no_warning_message_when_the_device_has_internet() {
+        let exp = XCTestExpectation(description: "\(#function)")
+        
+        // Given the device has internent connectivity
+        MockServiceManager.shared.setServiceAvailable()
+        
+        // Then the user should see no warning message
+        let newsVM = NewsFeedViewModel(service: MockNewsFeedService())
+        
+        Task.detached {
+            await newsVM.fetchNews()
+            let errorMessage = newsVM.errorMessage
+            
+            XCTAssertTrue(errorMessage.isEmpty, "Error message should be empty.")
+            
+            exp.fulfill()
+        }
+        
+        wait(for: [exp], timeout: executionTimeAllowance)
+    }
+    
     /// Scenario - No news when no internet and cache.
     func test_no_news_when_no_internet_and_no_cache() async {
         let exp = XCTestExpectation(description: "\(#function)")
         
         // Given the device has no internent connectivity
-        MockServiceManager.shared.setNoInternet()
+        MockServiceManager.shared.setServiceNotAvailable()
         
         // Then the user should see no news
         
-        let newsVM = NewsViewModel(service: MockNewsService())
+        let newsVM = NewsFeedViewModel(service: MockNewsFeedService())
         
-        Task.detached{
+        newsVM.$sections
+            .dropFirst() // drop the initial value
+            .sink { sections in
+                XCTAssertTrue(sections.count == 0, "News feed should be empty but found \(sections.count) news")
+                
+                exp.fulfill()
+            }
+            .store(in: &cancellables)
+        
+        Task.detached {
             await newsVM.fetchNews()
-            XCTAssertTrue(newsVM.news.count == 0, "News feed should be empty but found \(newsVM.news.count) news")
         }
         
         wait(for: [exp], timeout: executionTimeAllowance)
     }
     
     /// Scenario - Has news when no internet but cache.
-    func test_has_news_when_no_internet_but_cache() {
+    func test_has_news_when_no_internet_but_cache() async {
         let exp = XCTestExpectation(description: "\(#function)")
         
         // Given the device has no internent connectivity
-        MockServiceManager.shared.setNoInternet()
+        MockServiceManager.shared.setServiceNotAvailable()
         
         // Given cached news data available
         let cache = LRUCache<URL, NewsFeedResponse>()
         let url = RestAPIManager.newsFeed
-        let response = MockNewsFeedData.news
-        cache.setValue(response, forKey: url)
+        let response = MockNewsFeedData.newsResponse
+        await cache.setValue(response, forKey: url)
         
-        let newsService = MockNewsService(cache: cache)
-        let newsVM = NewsViewModel(service: newsService)
+        let newsService = MockNewsFeedService(cache: cache)
+        let newsVM = NewsFeedViewModel(service: newsService)
+        
+        newsVM.$sections
+            .dropFirst() // drop the initial value
+            .sink { sections in
+                XCTAssertTrue(sections.count > 0, "News feed should not be empty.")
+                
+                exp.fulfill()
+            }
+            .store(in: &cancellables)
         
         // Then the user should see cached news
         Task.detached{
             await newsVM.fetchNews()
-            XCTAssertTrue(newsVM.news.count > 0, "News feed should be empty")
         }
         
         wait(for: [exp], timeout: executionTimeAllowance)
     }
     
-    /// Scenario - Warning message when no internet.
-    func test_warning_message_when_no_internet() {
+    /// Scenario - Display the latest article first in the list
+    func test_latest_news_first() async {
+        let exp = XCTestExpectation(description: "\(#function)")
+        
         // Given the device has no internent connectivity
-        addLaunchArguments([.noNetwork])
-        
-        // When a user opens the app
-        app.launch()
-        
-        // Then the user should see warning message
-        guard let errorMessage = errorMessage() else {
-            XCTFail("Error message does not exist.")
-            return
-        }
-        
-        XCTAssertTrue(errorMessage.label.contains(NewsAppErrors.noInternet.localizedDescription), "Error message did not match.")
-    }
-    
-    /// Scenario - Warning message for cache.
-    func test_warning_message_when_no_internet_but_cache() {
-        // Given the device has no internent connectivity
-        addLaunchArguments([.noNetwork])
+        MockServiceManager.shared.setServiceNotAvailable()
         
         // Given cached news data available
-        addLaunchArguments([.cachedNews])
+        let cache = LRUCache<URL, NewsFeedResponse>()
+        let url = RestAPIManager.newsFeed
+        let response = MockNewsFeedData.newsResponse
+        await cache.setValue(response, forKey: url)
         
-        // When a user opens the app
-        app.launch()
+        let newsService = MockNewsFeedService(cache: cache)
+        let newsVM = NewsFeedViewModel(service: newsService)
         
-        // Then the user should see warning message
-        guard let errorMessage = errorMessage() else {
-            XCTFail("Error message does not exist.")
-            return
+        newsVM.$sections
+            .dropFirst() // drop the initial value
+            .sink { sections in
+                guard sections.count > 0 else { return }
+                
+                let sortedNewsVMs = sections[0].news.sorted(by: { $0.news.timeStamp > $1.news.timeStamp })
+                
+                XCTAssertTrue(sections[0].news == sortedNewsVMs, "News articles are not sorted by timeStamp DESC.")
+                
+                exp.fulfill()
+            }
+            .store(in: &cancellables)
+        
+        // Then the user should see cached news
+        Task.detached{
+            await newsVM.fetchNews()
         }
         
-        XCTAssertTrue(errorMessage.label.contains(Constants.Messages.cachedNewsFeed), "Error message did not match.")
-    }
-    
-    /// Scenario - No warning message when the device has internet and showing live news feed
-    func test_no_warning_message_when_the_device_has_internet() {
-        // Given the device has no internent connectivity
-        addLaunchArguments([.noNetwork])
-        
-        // Given cached news data available
-        addLaunchArguments([.cachedNews])
-        
-        // When a user opens the app
-        app.launch()
-        
-        // Then the user should see warning message
-        guard let _ = errorMessage() else {
-            return
-        }
-        
-        XCTFail("Error message should not be displayed.")
+        wait(for: [exp], timeout: executionTimeAllowance)
     }
 }

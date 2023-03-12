@@ -6,7 +6,7 @@
 //
 
 protocol ServiceManagerProtocol {
-    var isServiceAvailable: Bool{ get }
+    var isServiceAvailable: Bool { get }
     
     func setServiceNotAvailable()
     

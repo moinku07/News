@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum NewsAppErrors: Error, LocalizedError {
+enum NewsAppError: Error, LocalizedError {
     case missingCredentials
     case noData
     case urlError(URLError)
@@ -19,6 +19,7 @@ enum NewsAppErrors: Error, LocalizedError {
     case parserError(reason: String)
     case networkError(from: Error)
     case noInternet
+    case badImage
 
     var localizedDescription: String {
         switch self {
@@ -42,6 +43,8 @@ enum NewsAppErrors: Error, LocalizedError {
             return from.localizedDescription
         case .noInternet:
             return "The app requires internent connectivity to download and display news feed."
+        case .badImage:
+            return "Invalid image data."
         }
     }
     

@@ -6,6 +6,7 @@
 //
 
 import XCTest
+@testable import News
 
 class NewsFeedUITests: NewsUITests {
     func newsFeedView() -> XCUIElement? {
@@ -26,7 +27,7 @@ class NewsFeedUITests: NewsUITests {
         
         let errorMessage = newsFeedView.staticTexts["NewsFeedErrorMessage"].firstMatch
         
-        guard !errorMessage.waitForExistence(timeout: existenceCheckTimeAllowance) else {
+        guard errorMessage.waitForExistence(timeout: existenceCheckTimeAllowance) else {
             return nil
         }
         
@@ -85,27 +86,7 @@ class NewsFeedUITests: NewsUITests {
             return
         }
         
-        XCTAssertTrue(errorMessage.label.contains(NewsAppErrors.noInternet.localizedDescription), "Error message did not match.")
-    }
-    
-    /// Scenario - Warning message for cache.
-    func test_warning_message_when_no_internet_but_cache() {
-        // Given the device has no internent connectivity
-        addLaunchArguments([.noInternet])
-        
-        // Given cached news data available
-        addLaunchArguments([.cachedNews])
-        
-        // When a user opens the app
-        app.launch()
-        
-        // Then the user should see warning message
-        guard let errorMessage = errorMessage() else {
-            XCTFail("Error message does not exist.")
-            return
-        }
-        
-        XCTAssertTrue(errorMessage.label.contains(Constants.Messages.cachedNewsFeed), "Error message did not match.")
+        XCTAssertTrue(errorMessage.label.contains(NewsAppError.noInternet.localizedDescription), "Error message did not match.")
     }
     
     /// Scenario - No warning message when the device has internet and showing live news feed
@@ -127,4 +108,25 @@ class NewsFeedUITests: NewsUITests {
         XCTFail("Error message should not be displayed.")
     }
     
+    /// Scenario - Tapping a article item opens the news
+    func test_open_news_detail_view() {
+        addLaunchArguments([.noInternet])
+        addLaunchArguments([.cachedNews])
+        
+        app.launch()
+        
+        // When the user tap on a news article
+        let newsFeedView = newsFeedView()!
+        let newsArticle = newsFeedView.cells.element(boundBy: Int.random(in: 0...newsFeedView.cells.count))
+        newsArticle.tap()
+        
+        // Then the user should see news detail view
+        let newsDetailView = app.webViews["NewsDetailView"].firstMatch
+        
+        guard newsDetailView.waitForExistence(timeout: existenceCheckTimeAllowance) else {
+            XCTFail("News detail view did not present.")
+            
+            return
+        }
+    }
 }

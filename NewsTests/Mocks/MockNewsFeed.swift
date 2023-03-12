@@ -6,15 +6,15 @@
 //
 
 import Foundation
+@testable import News
 
 struct MockNewsFeedData{
     static var data: Data{
         return Data(jsonString.utf8)
     }
     
-    static var news: [NewsFeedResponse] = {
-        let response = try! JSONDecoder().decode(NewsFeedResponse.self, from: data)
-        return response.ews
+    static var newsResponse: NewsFeedResponse = {
+        return try! JSONDecoder().decode(NewsFeedResponse.self, from: data)
     }()
 }
 
@@ -2607,7 +2607,7 @@ private let jsonString = """
             "url": "https://www.fairfaxstatic.com.au/content/dam/images/h/2/a/4/l/h/image.related.articleLeadwide.1500x844.p5cnum.13zzqx.png/1677842078260.jpg",
             "lastModified": 1677474009942,
             "sponsored": false,
-            "description": "The stairway from the \nRoyal Galleria’s dramatic water\ncourt leads up to the all-day dining venue, Gastronomy.",
+            "description": "The stairway from the \\nRoyal Galleria’s dramatic water\\ncourt leads up to the all-day dining venue, Gastronomy.",
             "photographer": "Charis Perkins ",
             "type": "articleLeadWide",
             "width": 1500,
@@ -2628,7 +2628,7 @@ private let jsonString = """
             "url": "https://www.fairfaxstatic.com.au/content/dam/images/h/2/a/4/l/h/image.related.afrArticleInline.620x0.p5cnum.13zzqx.png/1677842078260.jpg",
             "lastModified": 1677474009942,
             "sponsored": false,
-            "description": "The stairway from the \nRoyal Galleria’s dramatic water\ncourt leads up to the all-day dining venue, Gastronomy.",
+            "description": "The stairway from the \\nRoyal Galleria’s dramatic water\\ncourt leads up to the all-day dining venue, Gastronomy.",
             "photographer": "Charis Perkins ",
             "type": "afrArticleInline",
             "width": 620,
